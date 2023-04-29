@@ -1,0 +1,21 @@
+APPARMOR INSTALLATION
+
+download linux kernel
+(https://wiki.archlinux.org/title/Kernel/Traditional_compilation)
+
+sudo pacman -S apparmor
+
+kernel .config file:
+  CONFIG_SECURITY_APPARMOR=y
+  CONFIG_AUDIT=y
+  CONFIG_LSM="landlock,lockdown,yama,integrity,apparmor,bpf"
+
+compile the kernel then restart.
+
+sudo systemctl enable --now apparmor
+
+aa-status
+
+disable kernel rate limiting for logs:
+  sysctl -w kernel.printk_ratelimit=0
+

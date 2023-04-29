@@ -1,0 +1,124 @@
+# Author: Marc Deslauriers <marc.deslauriers@ubuntu.com>
+
+abi <abi/3.0>,
+
+include <tunables/global>
+profile httpd /usr/{bin,sbin}/httpd flags=(attach_disconnected) {
+
+  # This profile is completely permissive.
+  # It is designed to target specific applications using mod_apparmor,
+  # hats, and the httpd.d directory.
+  #
+  # In order to enable this profile, you must:
+  #
+  # 0- Stop apache:
+  #    sudo service httpd stop
+  #
+  # 1- Enable the profile:
+  #    sudo aa-enforce /etc/apparmor.d/usr.sbin.httpd
+  #
+  # 2- Load the mpm_prefork and mod_apparmor modules:
+  #    sudo a2dismod <other non-prefork mpm>
+  #    sudo a2enmod mpm_prefork
+  #    sudo a2enmod apparmor
+  #    sudo service httpd restart
+  #
+  # 3- Place an appropriate profile containing the desired hat in the
+  #    /etc/apparmor.d/httpd.d directory.  Such profiles must include
+  #    the "httpd-common" abstraction:
+  #
+  #    ^example.com {
+  #        include <abstractions/httpd-common>
+  #        /var/www/html/             r,
+  #        /var/www/html/**           r,
+  #        /var/log/httpd/*.log     w,
+  #    }
+  #
+  # 4- Use the "AADefaultHatName" apache configuration option to specify a
+  #    hat to be used for a given apache virtualhost or "AAHatName" for
+  #    a given apache directory or location directive:
+  #
+  #    <VirtualHost example.com:80>
+  #        <IfModule mod_apparmor.c>
+  #            AADefaultHatName example.com
+  #        </IfModule>
+  #        ...
+  #    </VirtualHost>
+  #
+  #
+  # There is an example profile for phpsysinfo included in the
+  # apparmor-profiles package. To try it:
+  #
+  # 1- Install the phpsysinfo and the apparmor-profiles packages:
+  #    sudo apt-get install phpsysinfo apparmor-profiles
+  #
+  # 2- Enable the main httpd profile
+  #    sudo aa-enforce /etc/apparmor.d/usr.sbin.httpd
+  #
+  # 3- Configure apache with the following (or similar):
+  #    Alias /phpsysinfo /usr/share/phpsysinfo
+  #    <Location /phpsysinfo>
+  #        <IfModule mod_apparmor.c>
+  #          AAHatName phpsysinfo
+  #        </IfModule>
+  #
+  #        # adjust as necessary:
+  #        Options None
+  #        Require local
+  #        Require ip 192.168.0.0/16
+  #    </Location>
+  #
+
+  include <abstractions/base>
+  include <abstractions/nameservice>
+
+  deny /bin/* x,
+  deny /usr/bin/* x,
+  deny /usr/sbin/* x,
+
+  deny /usr/bin/php* r,
+  deny /usr/bin/python* r,
+  deny /usr/bin/perl* r,
+  deny /usr/bin/ruby* r,
+  deny /usr/bin/bash* r,
+  deny /usr/bin/sh* r,
+  deny /usr/bin/zsh* r,
+
+  # Send signals to all hats.
+  signal (send) peer=@{profile_name}//*,
+
+  capability dac_override,
+  capability kill,
+  capability net_bind_service,
+  capability setgid,
+  capability setuid,
+  capability sys_tty_config,
+
+  / rw,
+  /** mrwlkix,
+
+
+  ^DEFAULT_URI flags=(attach_disconnected) {
+    include <abstractions/base>
+    include <abstractions/httpd-common>
+
+    / rw,
+    /** mrwlkix,
+  }
+
+  ^HANDLING_UNTRUSTED_INPUT flags=(attach_disconnected) {
+    include <abstractions/httpd-common>
+
+    / rw,
+    /** mrwlkix,
+  }
+
+  # This directory contains web application
+  # package-specific apparmor files.
+
+  include <httpd.d>
+
+  # Site-specific additions and overrides. See local/README for details.
+  include if exists <local/usr.sbin.httpd>
+}
+

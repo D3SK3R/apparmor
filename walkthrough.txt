@@ -1,0 +1,43 @@
+first move the index.html and revshell.php to the httpd directory:
+  /srv/http
+then start/restart httpd:
+  systemctl start/restart httpd
+
+get the machine's IP:
+  ip a
+and open the browser to that url
+
+now, on the host machine, listen to connections:
+  nc -tnlvp 2727
+in the browser, run the revshell.php
+  <machine IP>/revshell.php
+it should pop up a shell on the attacker machine
+
+now close that shell
+copy the content of the abstractions folder to /etc/apparmor.d/abstractions/
+copy the folder httpd.d and the rule usr.sbin.httpd to the apparmor directoy:
+  cp -r httpd.d /etc/apparmor.d/
+  cp usr.sbin.httpd /etc/apparmor.d/
+
+now enforce/enable the httpd rule:
+  aa-enforce /etc/apparmor.d/usr.sbin.httpd
+and restart the httpd and apparmor services
+  systemctl restart apparmor
+  systemctl restart httpd
+
+now on the host machine again, run a listener:
+  nc -tnlvp 2727
+and on the browser run that reverse shell
+  <machine IP>/revshell.php
+it shouldn't work because apparmor won't allow it to.
+
+_______________________
+to disable/remove the rule:
+
+disable:
+  sudo aa-disable /etc/apparmor.d/usr.sbin.httpd
+
+remove:
+  rm /etc/apparmor.d/usr.sbin.httpd
+  aa-remove-unknown
+

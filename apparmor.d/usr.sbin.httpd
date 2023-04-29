@@ -1,0 +1,62 @@
+abi <abi/3.0>,
+
+include <tunables/global>
+profile httpd /usr/{bin,sbin}/httpd flags=(attach_disconnected) {
+
+  include <abstractions/base>
+  include <abstractions/nameservice>
+
+  # deny access to shells and interpreters
+  # x = deny executing
+  # r = deny reading
+  deny /bin/* x,
+  deny /usr/bin/* x,
+  deny /usr/sbin/* x,
+
+  deny /usr/bin/php* r,
+  deny /usr/bin/python* r,
+  deny /usr/bin/perl* r,
+  deny /usr/bin/ruby* r,
+  deny /usr/bin/bash* r,
+  deny /usr/bin/sh* r,
+  deny /usr/bin/zsh* r,
+
+  # Send signals to all hats.
+  signal (send) peer=@{profile_name}//*,
+
+  # enables needed capabilities so that httpd can work as expected
+  capability dac_override,
+  capability kill,
+  capability net_bind_service,
+  capability setgid,
+  capability setuid,
+  capability sys_tty_config,
+
+  / rw,
+  /** mrwlkix,
+
+  # allows access to resources needed by httpd
+  ^DEFAULT_URI flags=(attach_disconnected) {
+    include <abstractions/base>
+    include <abstractions/httpd-common>
+
+    / rw,
+    /** mrwlkix,
+  }
+
+  ^HANDLING_UNTRUSTED_INPUT flags=(attach_disconnected) {
+    include <abstractions/httpd-common>
+
+    / rw,
+    /** mrwlkix,
+  }
+
+  # This directory contains web application
+  # package-specific apparmor files.
+
+  include <httpd.d>
+
+  # Site-specific additions and overrides. See local/README for details.
+  include if exists <local/usr.sbin.httpd>
+}
+
